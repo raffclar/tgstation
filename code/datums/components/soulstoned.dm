@@ -10,14 +10,12 @@
 	src.container = container
 
 	S.forceMove(container)
-
-	S.status_flags |= GODMODE
+	S.fully_heal()
 	ADD_TRAIT(S, TRAIT_IMMOBILIZED, SOULSTONE_TRAIT)
 	ADD_TRAIT(S, TRAIT_HANDS_BLOCKED, SOULSTONE_TRAIT)
-	S.health = S.maxHealth
-	S.bruteloss = 0
+	S.status_flags |= GODMODE
 
-	RegisterSignal(S, COMSIG_MOVABLE_MOVED, .proc/free_prisoner)
+	RegisterSignal(S, COMSIG_MOVABLE_MOVED, PROC_REF(free_prisoner))
 
 /datum/component/soulstoned/proc/free_prisoner()
 	SIGNAL_HANDLER

@@ -50,9 +50,9 @@ GLOBAL_VAR(command_name)
 
 	var/config_server_name = CONFIG_GET(string/servername)
 	if(config_server_name)
-		world.name = "[config_server_name][config_server_name == GLOB.station_name ? "" : ": [GLOB.station_name]"]"
+		world.name = "[config_server_name][config_server_name == GLOB.station_name ? "" : ": [html_decode(GLOB.station_name)]"]"
 	else
-		world.name = GLOB.station_name
+		world.name = html_decode(GLOB.station_name)
 
 
 /proc/new_station_name()
@@ -66,10 +66,13 @@ GLOBAL_VAR(command_name)
 		new_station_name = name + " "
 		name = ""
 
+	if(prob(0.1))
+		random = 999999999 //ridiculously long name in written numbers
+
 	// Prefix
-	var/holiday_name = pick(SSevents.holidays)
+	var/holiday_name = length(GLOB.holidays) && pick(GLOB.holidays)
 	if(holiday_name)
-		var/datum/holiday/holiday = SSevents.holidays[holiday_name]
+		var/datum/holiday/holiday = GLOB.holidays[holiday_name]
 		if(istype(holiday, /datum/holiday/friday_thirteenth))
 			random = 13
 		name = holiday.getStationPrefix()
@@ -94,16 +97,18 @@ GLOBAL_VAR(command_name)
 		if(4)
 			new_station_name += pick(GLOB.phonetic_alphabet)
 		if(5)
-			new_station_name += pick(GLOB.numbers_as_words)
+			new_station_name += convert_integer_to_words(rand(-1,99), capitalise = TRUE)
 		if(13)
 			new_station_name += pick("13","XIII","Thirteen")
+		if(999999999)
+			new_station_name += convert_integer_to_words(rand(111111111,999999999), capitalise = TRUE)
 	return new_station_name
 
 /proc/syndicate_name()
 	var/name = ""
 
 	// Prefix
-	name += pick("Clandestine", "Prima", "Blue", "Zero-G", "Max", "Blasto", "Waffle", "North", "Omni", "Newton", "Cyber", "Bonk", "Gene", "Gib")
+	name += pick("Clandestine", "Prima", "Blue", "Zero-G", "Max", "Blasto", "North", "Omni", "Newton", "Cyber", "Bonk", "Gene", "Gib")
 
 	// Suffix
 	if (prob(80))
@@ -116,11 +121,11 @@ GLOBAL_VAR(command_name)
 		else
 			name += pick("Syndi", "Corp", "Bio", "System", "Prod", "Chem", "Inter", "Hive")
 			name += pick("", "-")
-			name += pick("Tech", "Sun", "Co", "Tek", "X", "Inc", "Code")
+			name += pick("Tech", "Co", "Tek", "X", "Inc", "Code")
 	// Small
 	else
 		name += pick("-", "*", "")
-		name += pick("Tech", "Sun", "Co", "Tek", "X", "Inc", "Gen", "Star", "Dyne", "Code", "Hive")
+		name += pick("Tech", "Co", "Tek", "X", "Inc", "Gen", "Star", "Dyne", "Code", "Hive")
 
 	return name
 
@@ -178,16 +183,16 @@ GLOBAL_DATUM(syndicate_code_response_regex, /regex)
 
 	for(words,words>0,words--)//Randomly picks from one of the choices below.
 
-		if(words==1&&(1 in safety)&&(2 in safety))//If there is only one word remaining and choice 1 or 2 have not been selected.
+		if(words == 1 && (1 in safety) && (2 in safety))//If there is only one word remaining and choice 1 or 2 have not been selected.
 			safety = list(pick(1,2))//Select choice 1 or 2.
-		else if(words==1&&maxwords==2)//Else if there is only one word remaining (and there were two originally), and 1 or 2 were chosen,
+		else if(words == 1 && maxwords == 2)//Else if there is only one word remaining (and there were two originally), and 1 or 2 were chosen,
 			safety = list(3)//Default to list 3
 
 		switch(pick(safety))//Chance based on the safety list.
 			if(1)//1 and 2 can only be selected once each to prevent more than two specific names/places/etc.
 				switch(rand(1,2))//Mainly to add more options later.
 					if(1)
-						if(names.len&&prob(70))
+						if(names.len && prob(70))
 							. += pick(names)
 						else
 							if(prob(10))
@@ -198,7 +203,12 @@ GLOBAL_DATUM(syndicate_code_response_regex, /regex)
 								new_name += pick(GLOB.last_names)
 								. += new_name
 					if(2)
-						. += pick(get_all_jobs())//Returns a job.
+						var/datum/job/job = pick(SSjob.joinable_occupations)
+						if(job)
+							. += job.title //Returns a job.
+						else
+							stack_trace("Failed to pick(SSjob.joinable_occupations) on generate_code_phrase()")
+							. += "Bug"
 				safety -= 1
 			if(2)
 				switch(rand(1,3))//Food, drinks, or places. Only selectable once.
@@ -220,10 +230,61 @@ GLOBAL_DATUM(syndicate_code_response_regex, /regex)
 					if(4)
 						. += lowertext(pick(threats))
 		if(!return_list)
-			if(words==1)
+			if(words == 1)
 				. += "."
 			else
 				. += ", "
 
 /proc/odd_organ_name()
 	return "[pick(GLOB.gross_adjectives)], [pick(GLOB.gross_adjectives)] organ"
+
+/proc/hive_name()
+	return "[pick(GLOB.hive_names)]-hive"
+
+/**
+ * returns an ic name of the tool needed
+ * Arguments:
+ * * tool_behaviour: the tool described!
+ */
+/proc/tool_behaviour_name(tool_behaviour)
+	switch(tool_behaviour)
+		if(TOOL_CROWBAR)
+			return "a crowbar"
+		if(TOOL_MULTITOOL)
+			return "a multitool"
+		if(TOOL_SCREWDRIVER)
+			return "a screwdriver"
+		if(TOOL_WIRECUTTER)
+			return "a pair of wirecutters"
+		if(TOOL_WRENCH)
+			return "a wrench"
+		if(TOOL_WELDER)
+			return "a welder"
+		if(TOOL_ANALYZER)
+			return "an analyzer tool"
+		if(TOOL_MINING)
+			return "a mining implement"
+		if(TOOL_SHOVEL)
+			return "a digging tool"
+		if(TOOL_RETRACTOR)
+			return "a retractor"
+		if(TOOL_HEMOSTAT)
+			return "something to clamp bleeding"
+		if(TOOL_CAUTERY)
+			return "a cautery"
+		if(TOOL_DRILL)
+			return "a drilling tool"
+		if(TOOL_SCALPEL)
+			return "a fine cutting tool"
+		if(TOOL_SAW)
+			return "a saw"
+		if(TOOL_BONESET)
+			return "a bone setter"
+		if(TOOL_KNIFE)
+			return "a cutting tool"
+		if(TOOL_BLOODFILTER)
+			return "a blood filter"
+		if(TOOL_ROLLINGPIN)
+			return "a rolling pin"
+		else
+			return "something... but the gods didn't set this up right (Please report this bug)"

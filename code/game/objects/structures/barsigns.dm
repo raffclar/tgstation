@@ -6,13 +6,21 @@
 	req_access = list(ACCESS_BAR)
 	max_integrity = 500
 	integrity_failure = 0.5
-	armor = list(MELEE = 20, BULLET = 20, LASER = 20, ENERGY = 100, BOMB = 0, BIO = 0, RAD = 0, FIRE = 50, ACID = 50)
+	armor_type = /datum/armor/sign_barsign
 	buildable_sign = FALSE
 
 	var/panel_open = FALSE
 	var/datum/barsign/chosen_sign
 
-/obj/structure/sign/barsign/Initialize()
+/datum/armor/sign_barsign
+	melee = 20
+	bullet = 20
+	laser = 20
+	energy = 100
+	fire = 50
+	acid = 50
+
+/obj/structure/sign/barsign/Initialize(mapload)
 	. = ..()
 	set_sign(new /datum/barsign/hiddensigns/signoff)
 
@@ -22,7 +30,7 @@
 
 	icon_state = sign.icon
 
-	if(sign.name)
+	if(sign.rename_area)
 		name = "[initial(name)] ([sign.name])"
 	else
 		name = "[initial(name)]"
@@ -30,7 +38,7 @@
 	if(sign.desc)
 		desc = sign.desc
 
-	if(sign.rename_area && sign.name)
+	if(sign.rename_area)
 		rename_area(src, sign.name)
 
 	return sign
@@ -42,12 +50,13 @@
 			var/new_sign = new D
 			return set_sign(new_sign)
 
-/obj/structure/sign/barsign/obj_break(damage_flag)
+/obj/structure/sign/barsign/atom_break(damage_flag)
+	. = ..()
 	if(!broken && !(flags_1 & NODECONSTRUCT_1))
 		broken = TRUE
 
 /obj/structure/sign/barsign/deconstruct(disassembled = TRUE)
-	new /obj/item/stack/sheet/metal(drop_location(), 2)
+	new /obj/item/stack/sheet/iron(drop_location(), 2)
 	new /obj/item/stack/cable_coil(drop_location(), 2)
 	qdel(src)
 
@@ -61,48 +70,52 @@
 /obj/structure/sign/barsign/attack_ai(mob/user)
 	return attack_hand(user)
 
-/obj/structure/sign/barsign/attack_hand(mob/user)
+/obj/structure/sign/barsign/attack_hand(mob/user, list/modifiers)
 	. = ..()
 	if(.)
 		return
 	if(!allowed(user))
-		to_chat(user, "<span class='info'>Access denied.</span>")
+		to_chat(user, span_info("Access denied."))
 		return
 	if(broken)
-		to_chat(user, "<span class='danger'>The controls seem unresponsive.</span>")
+		to_chat(user, span_danger("The controls seem unresponsive."))
 		return
 	pick_sign(user)
 
-/obj/structure/sign/barsign/attackby(obj/item/I, mob/user)
-	if(I.tool_behaviour == TOOL_SCREWDRIVER)
-		if(!panel_open)
-			to_chat(user, "<span class='notice'>You open the maintenance panel.</span>")
-			set_sign(new /datum/barsign/hiddensigns/signoff)
-			panel_open = TRUE
-		else
-			to_chat(user, "<span class='notice'>You close the maintenance panel.</span>")
-			if(!broken)
-				if(!chosen_sign)
-					set_sign(new /datum/barsign/hiddensigns/signoff)
-				else
-					set_sign(chosen_sign)
-			else
-				set_sign(new /datum/barsign/hiddensigns/empbarsign)
-			panel_open = FALSE
+/obj/structure/sign/barsign/screwdriver_act(mob/living/user, obj/item/tool)
+	tool.play_tool_sound(src)
+	panel_open = !panel_open
+	if(panel_open)
+		to_chat(user, span_notice("You open the maintenance panel."))
+		set_sign(new /datum/barsign/hiddensigns/signoff)
+		return TOOL_ACT_TOOLTYPE_SUCCESS
+	to_chat(user, span_notice("You close the maintenance panel."))
 
-	else if(istype(I, /obj/item/stack/cable_coil) && panel_open)
+	if(broken)
+		set_sign(new /datum/barsign/hiddensigns/empbarsign)
+	else if(!chosen_sign)
+		set_sign(new /datum/barsign/hiddensigns/signoff)
+	else
+		set_sign(chosen_sign)
+	return TOOL_ACT_TOOLTYPE_SUCCESS
+
+/obj/structure/sign/barsign/attackby(obj/item/I, mob/user)
+	if(istype(I, /obj/item/stack/cable_coil) && panel_open)
 		var/obj/item/stack/cable_coil/C = I
 		if(!broken)
-			to_chat(user, "<span class='warning'>This sign is functioning properly!</span>")
+			to_chat(user, span_warning("This sign is functioning properly!"))
 			return
 
 		if(C.use(2))
-			to_chat(user, "<span class='notice'>You replace the burnt wiring.</span>")
+			to_chat(user, span_notice("You replace the burnt wiring."))
 			broken = FALSE
 		else
-			to_chat(user, "<span class='warning'>You need at least two lengths of cable!</span>")
-	else
-		return ..()
+			to_chat(user, span_warning("You need at least two lengths of cable!"))
+		return TRUE
+
+	if (broken)
+		return TRUE
+	return ..()
 
 
 /obj/structure/sign/barsign/emp_act(severity)
@@ -114,16 +127,16 @@
 
 /obj/structure/sign/barsign/emag_act(mob/user)
 	if(broken)
-		to_chat(user, "<span class='warning'>Nothing interesting happens!</span>")
+		to_chat(user, span_warning("Nothing interesting happens!"))
 		return
-	to_chat(user, "<span class='notice'>You load an illegal barsign into the memory buffer...</span>")
+	to_chat(user, span_notice("You load an illegal barsign into the memory buffer..."))
 	sleep(10 SECONDS)
 	chosen_sign = set_sign(new /datum/barsign/hiddensigns/syndibarsign)
 
 
 /obj/structure/sign/barsign/proc/pick_sign(mob/user)
-	var/picked_name = input(user, "Available Signage", "Bar Sign", name) as null|anything in sortList(get_bar_names())
-	if(!picked_name)
+	var/picked_name = tgui_input_list(user, "Available Signage", "Bar Sign", sort_list(get_bar_names()))
+	if(isnull(picked_name))
 		return
 	chosen_sign = set_sign_by_name(picked_name)
 	SSblackbox.record_feedback("tally", "barsign_picked", 1, chosen_sign.type)
@@ -132,15 +145,20 @@
 	var/list/names = list()
 	for(var/d in subtypesof(/datum/barsign))
 		var/datum/barsign/D = d
-		if(initial(D.name) && !initial(D.hidden))
+		if(!initial(D.hidden))
 			names += initial(D.name)
 	. = names
 
 /datum/barsign
-	var/name = "Name"
-	var/icon = "Icon"
-	var/desc = "desc"
+	/// User-visible name of the sign.
+	var/name
+	/// Icon state associated with this sign
+	var/icon
+	/// Description shown in the sign's examine text.
+	var/desc
+	/// Hidden from list of selectable options.
 	var/hidden = FALSE
+	/// Rename the area when this sign is selected.
 	var/rename_area = TRUE
 
 /datum/barsign/New()
@@ -298,7 +316,7 @@
 
 
 /datum/barsign/hiddensigns/empbarsign
-	name = null
+	name = "EMP'd"
 	icon = "empbarsign"
 	desc = "Something has gone very wrong."
 	rename_area = FALSE
@@ -309,7 +327,7 @@
 	desc = "Syndicate or die."
 
 /datum/barsign/hiddensigns/signoff
-	name = null
+	name = "Off"
 	icon = "empty"
 	desc = "This sign doesn't seem to be on."
 	rename_area = FALSE

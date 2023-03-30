@@ -6,8 +6,9 @@
 	layer = SHUTTER_LAYER
 	closingLayer = SHUTTER_LAYER
 	damage_deflection = 20
-	armor = list("melee" = 20, "bullet" = 20, "laser" = 20, "energy" = 75, "bomb" = 25, "bio" = 100, "rad" = 100, "fire" = 100, "acid" = 70)
+	armor_type = /datum/armor/poddoor_shutters
 	max_integrity = 100
+	recipe_type = /datum/crafting_recipe/shutters
 
 /obj/machinery/door/poddoor/shutters/preopen
 	icon_state = "open"
@@ -30,6 +31,15 @@
 	density = FALSE
 	opacity = FALSE
 	rad_insulation = RAD_NO_INSULATION
+
+/datum/armor/poddoor_shutters
+	melee = 20
+	bullet = 20
+	laser = 20
+	energy = 75
+	bomb = 25
+	fire = 100
+	acid = 70
 
 /obj/machinery/door/poddoor/shutters/radiation/open()
 	. = ..()

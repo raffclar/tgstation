@@ -19,11 +19,11 @@
 /datum/disease/advance
 	name = "Unknown" // We will always let our Virologist name our disease.
 	desc = "An engineered disease which can contain a multitude of symptoms."
-	form = "Advance Disease" // Will let med-scanners know that this disease was engineered.
+	form = "Advanced Disease" // Will let med-scanners know that this disease was engineered.
 	agent = "advance microbes"
 	max_stages = 5
 	spread_text = "Unknown"
-	viable_mobtypes = list(/mob/living/carbon/human, /mob/living/carbon/monkey)
+	viable_mobtypes = list(/mob/living/carbon/human)
 
 	// NEW VARS
 	var/list/properties = list()
@@ -31,41 +31,41 @@
 	var/id = ""
 	var/processing = FALSE
 	var/mutable = TRUE //set to FALSE to prevent most in-game methods of altering the disease via virology
-	var/oldres	//To prevent setting new cures unless resistance changes.
+	var/oldres //To prevent setting new cures unless resistance changes.
 
 	// The order goes from easy to cure to hard to cure. Keep in mind that sentient diseases pick two cures from tier 6 and up, ensure they won't react away in bodies.
-	var/static/list/advance_cures = 	list(
-									list(	// level 1
+	var/static/list/advance_cures = list(
+									list( // level 1
 										/datum/reagent/copper, /datum/reagent/silver, /datum/reagent/iodine, /datum/reagent/iron, /datum/reagent/carbon
 									),
-									list(	// level 2
+									list( // level 2
 										/datum/reagent/potassium, /datum/reagent/consumable/ethanol, /datum/reagent/lithium, /datum/reagent/silicon, /datum/reagent/bromine
 									),
-									list(	// level 3
-										/datum/reagent/consumable/sodiumchloride, /datum/reagent/consumable/sugar, /datum/reagent/consumable/orangejuice, /datum/reagent/consumable/tomatojuice, /datum/reagent/consumable/milk
+									list( // level 3
+										/datum/reagent/consumable/salt, /datum/reagent/consumable/sugar, /datum/reagent/consumable/orangejuice, /datum/reagent/consumable/tomatojuice, /datum/reagent/consumable/milk
 									),
-									list(	//level 4
+									list( //level 4
 										/datum/reagent/medicine/spaceacillin, /datum/reagent/medicine/salglu_solution, /datum/reagent/medicine/epinephrine, /datum/reagent/medicine/c2/multiver
 									),
-									list(	//level 5
+									list( //level 5
 										/datum/reagent/fuel/oil, /datum/reagent/medicine/synaptizine, /datum/reagent/medicine/mannitol, /datum/reagent/drug/space_drugs, /datum/reagent/cryptobiolin
 									),
-									list(	// level 6
+									list( // level 6
 										/datum/reagent/phenol, /datum/reagent/medicine/inacusiate, /datum/reagent/medicine/oculine, /datum/reagent/medicine/antihol
 									),
-									list(	// level 7
+									list( // level 7
 										/datum/reagent/medicine/leporazine, /datum/reagent/toxin/mindbreaker, /datum/reagent/medicine/higadrite
 									),
-									list(	// level 8
+									list( // level 8
 										/datum/reagent/pax, /datum/reagent/drug/happiness, /datum/reagent/medicine/ephedrine
 									),
-									list(	// level 9
+									list( // level 9
 										/datum/reagent/toxin/lipolicide, /datum/reagent/medicine/sal_acid
 									),
-									list(	// level 10
+									list( // level 10
 										/datum/reagent/medicine/haloperidol, /datum/reagent/drug/aranesp, /datum/reagent/medicine/diphenhydramine
 									),
-									list(	//level 11
+									list( //level 11
 										/datum/reagent/medicine/modafinil, /datum/reagent/toxin/anacea
 									)
 								)
@@ -93,7 +93,7 @@
 		advance_diseases += P
 	var/replace_num = advance_diseases.len + 1 - DISEASE_LIMIT //amount of diseases that need to be removed to fit this one
 	if(replace_num > 0)
-		sortTim(advance_diseases, /proc/cmp_advdisease_resistance_asc)
+		sortTim(advance_diseases, GLOBAL_PROC_REF(cmp_advdisease_resistance_asc))
 		for(var/i in 1 to replace_num)
 			var/datum/disease/advance/competition = advance_diseases[i]
 			if(totalTransmittable() > competition.totalResistance())
@@ -105,7 +105,7 @@
 
 
 // Randomly pick a symptom to activate.
-/datum/disease/advance/stage_act()
+/datum/disease/advance/stage_act(delta_time, times_fired)
 	. = ..()
 	if(!.)
 		return
@@ -155,19 +155,6 @@
 	//this is a new disease starting over at stage 1, so processing is not copied
 	return A
 
-//Describe this disease to an admin in detail (for logging)
-/datum/disease/advance/admin_details()
-	var/list/name_symptoms = list()
-	for(var/datum/symptom/S in symptoms)
-		name_symptoms += S.name
-	return "[name] sym:[english_list(name_symptoms)] r:[totalResistance()] s:[totalStealth()] ss:[totalStageSpeed()] t:[totalTransmittable()]"
-
-/*
-
-	NEW PROCS
-
- */
-
 // Mix the symptoms of two diseases (the src and the argument)
 /datum/disease/advance/proc/Mix(datum/disease/advance/D)
 	if(!(IsSame(D)))
@@ -210,7 +197,7 @@
 /datum/disease/advance/proc/Refresh(new_name = FALSE)
 	GenerateProperties()
 	AssignProperties()
-	if(processing && symptoms && symptoms.len)
+	if(processing && symptoms?.len)
 		for(var/datum/symptom/S in symptoms)
 			S.Start(src)
 			S.on_stage_change(src)
@@ -238,24 +225,24 @@
 // Assign the properties that are in the list.
 /datum/disease/advance/proc/AssignProperties()
 
-	if(properties && properties.len)
+	if(properties?.len)
 		if(properties["stealth"] >= 2)
 			visibility_flags |= HIDDEN_SCANNER
 		else
 			visibility_flags &= ~HIDDEN_SCANNER
 
-		if(properties["transmittable"]>=11)
+		if(properties["transmittable"] >= 11)
 			SetSpread(DISEASE_SPREAD_AIRBORNE)
-		else if(properties["transmittable"]>=7)
+		else if(properties["transmittable"] >= 7)
 			SetSpread(DISEASE_SPREAD_CONTACT_SKIN)
-		else if(properties["transmittable"]>=3)
+		else if(properties["transmittable"] >= 3)
 			SetSpread(DISEASE_SPREAD_CONTACT_FLUIDS)
 		else
 			SetSpread(DISEASE_SPREAD_BLOOD)
 
-		permeability_mod = max(CEILING(0.4 * properties["transmittable"], 1), 1)
-		cure_chance = 15 - clamp(properties["resistance"], -5, 5) // can be between 10 and 20
-		stage_prob = max(properties["stage_rate"], 2)
+		spreading_modifier = max(CEILING(0.4 * properties["transmittable"], 1), 1)
+		cure_chance = clamp(7.5 - (0.5 * properties["resistance"]), 5, 10) // can be between 5 and 10
+		stage_prob = max(0.5 * properties["stage_rate"], 1)
 		SetSeverity(properties["severity"])
 		GenerateCure(properties)
 	else
@@ -308,7 +295,7 @@
 
 // Will generate a random cure, the more resistance the symptoms have, the harder the cure.
 /datum/disease/advance/proc/GenerateCure()
-	if(properties && properties.len)
+	if(properties?.len)
 		var/res = clamp(properties["resistance"] - (symptoms.len / 2), 1, advance_cures.len)
 		if(res == oldres)
 			return
@@ -362,7 +349,7 @@
 				L += "[S.id]N"
 			else
 				L += S.id
-		L = sortList(L) // Sort the list so it doesn't matter which order the symptoms are in.
+		L = sort_list(L) // Sort the list so it doesn't matter which order the symptoms are in.
 		var/result = jointext(L, ":")
 		id = result
 	return id
@@ -421,7 +408,7 @@
 		var/datum/disease/advance/D2 = pick(diseases)
 		D2.Mix(D1)
 
-	 // Should be only 1 entry left, but if not let's only return a single entry
+	// Should be only 1 entry left, but if not let's only return a single entry
 	var/datum/disease/advance/to_return = pick(diseases)
 	to_return.Refresh(TRUE)
 	return to_return
@@ -451,7 +438,7 @@
 	symptoms += SSdisease.list_symptoms.Copy()
 	do
 		if(user)
-			var/symptom = input(user, "Choose a symptom to add ([i] remaining)", "Choose a Symptom") in sortList(symptoms, /proc/cmp_typepaths_asc)
+			var/symptom = tgui_input_list(user, "Choose a symptom to add ([i] remaining)", "Choose a Symptom", sort_list(symptoms, GLOBAL_PROC_REF(cmp_typepaths_asc)))
 			if(isnull(symptom))
 				return
 			else if(istext(symptom))
@@ -465,20 +452,19 @@
 
 	if(D.symptoms.len > 0)
 
-		var/new_name = stripped_input(user, "Name your new disease.", "New Name")
+		var/new_name = tgui_input_text(user, "Name your new disease", "New Name", max_length = MAX_NAME_LEN)
 		if(!new_name)
 			return
 		D.Refresh()
-		D.AssignName(new_name)	//Updates the master copy
+		D.AssignName(new_name) //Updates the master copy
 		D.name = new_name //Updates our copy
 
 		var/list/targets = list("Random")
-		targets += sortNames(GLOB.human_list)
-		var/target = input(user, "Pick a viable human target for the disease.", "Disease Target") as null|anything in targets
-
-		var/mob/living/carbon/human/H
-		if(!target)
+		targets += sort_names(GLOB.human_list)
+		var/target = tgui_input_list(user, "Viable human target", "Disease Target", targets)
+		if(isnull(target))
 			return
+		var/mob/living/carbon/human/H
 		if(target == "Random")
 			for(var/human in shuffle(GLOB.human_list))
 				H = human
