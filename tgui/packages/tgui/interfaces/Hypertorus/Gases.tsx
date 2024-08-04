@@ -21,7 +21,7 @@ type GasListProps = {
   input_switch: string;
   raw_gases: HypertorusGas[];
   minimumScale: number;
-  prepend?: (gas: HypertorusGas) => void;
+  prepend?: (gas: HypertorusGas) => JSX.Element;
   rateHelp?: string;
   stickyGases?: readonly string[];
 };
